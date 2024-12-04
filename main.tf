@@ -86,6 +86,7 @@ resource "aws_route_table" "dvs_pub_rt" {
   }
 }
 
+# Route Tables Association
 resource "aws_route_table_association" "dvs_pub_assoc1" {
   subnet_id      = aws_subnet.dvs_pub_sub1.id
   route_table_id = aws_route_table.dvs_pub_rt.id
@@ -154,6 +155,7 @@ resource "aws_security_group" "dvs_web" {
 }
 
 
+# EC2 Ubuntu Web-Server
 resource "aws_instance" "dvs_web_svr1" {
   ami                    = "ami-0084a47cc718c111a"
   instance_type          = "t2.micro"
@@ -196,6 +198,8 @@ resource "aws_instance" "dvs_web_svr2" {
                 EOF
 }
 
+
+# EC2 Ubuntu App-Server
 resource "aws_instance" "dvs_app_svr1" {
   ami                    = "ami-0084a47cc718c111a"
   instance_type          = "t2.micro"
@@ -236,10 +240,10 @@ resource "aws_instance" "dvs_app_svr2" {
 }
 
 
-
+# Launch Template
 resource "aws_launch_template" "dvs_web_lt" {
   name          = "DVS-Web-LT"
-  image_id      = "ami-0084a47cc718c111a" # Replace with your AMI
+  image_id      = "ami-0084a47cc718c111a" 
   instance_type = "t2.micro"
   key_name      = "eng-de"
 
@@ -257,7 +261,7 @@ resource "aws_launch_template" "dvs_web_lt" {
 
   network_interfaces {
     associate_public_ip_address = true
-    subnet_id                   = aws_subnet.dvs_pub_sub1.id # Launch template uses first subnet by default
+    subnet_id                   = aws_subnet.dvs_pub_sub1.id 
   }
 
   tags = {
@@ -265,6 +269,8 @@ resource "aws_launch_template" "dvs_web_lt" {
   }
 }
 
+
+# Target Group
 resource "aws_lb_target_group" "dvs_web_tg" {
   name        = "DVS-Web-TG"
   port        = 80
@@ -282,6 +288,7 @@ resource "aws_lb_target_group" "dvs_web_tg" {
 }
 
 
+# Application Load Balancer
 resource "aws_lb" "dvs_alb" {
   name               = "DVS-ALB"
   internal           = false
@@ -306,6 +313,7 @@ resource "aws_lb_listener" "dvs_web_listener" {
 }
 
 
+# Auto Scaling Group
 resource "aws_autoscaling_group" "dvs_web_asg" {
   launch_template {
     id      = aws_launch_template.dvs_web_lt.id
@@ -324,12 +332,13 @@ resource "aws_autoscaling_group" "dvs_web_asg" {
   target_group_arns = [aws_lb_target_group.dvs_web_tg.arn]
 
   tag {
-      key                 = "Name"
+      key                 = "web_tg"
       value               = "DVS-Web-ASG"
       propagate_at_launch = true
    }
   
 }
+
 
 resource "aws_autoscaling_policy" "dvs_web_asg_scale_out" {
   name                   = "scale-out"
@@ -347,6 +356,7 @@ resource "aws_autoscaling_policy" "dvs_web_asg_scale_in" {
   cooldown               = 300
 }
 
+# Application Tier Security Group
 resource "aws_security_group" "dvs_app" {
   name        = "App-SG"
   description = "Allow traffic from the web tier to the app tier"
@@ -357,7 +367,7 @@ resource "aws_security_group" "dvs_app" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["10.49.0.0/16"] # Adjust to your web tier subnet CIDR
+    cidr_blocks = ["10.49.0.0/16"] 
   }
 
   egress {
