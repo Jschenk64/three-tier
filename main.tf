@@ -1,10 +1,10 @@
 provider "aws" {
-  region = "eu-central-1"
+  region = var.aws_region
 }
 
 # VPC
 resource "aws_vpc" "dvs_vpc" {
-  cidr_block           = "10.49.0.0/16"
+  cidr_block           = var.vpc_cidr
   enable_dns_support   = true
   enable_dns_hostnames = true
   tags = {
@@ -23,9 +23,9 @@ resource "aws_internet_gateway" "dvs_igw" {
 # Subnets
 resource "aws_subnet" "dvs_pub_sub1" {
   vpc_id            = aws_vpc.dvs_vpc.id
-  cidr_block        = "10.49.150.0/24"
+  cidr_block        = var.pub_subnet1_cidr
   map_public_ip_on_launch = true
-  availability_zone = "eu-central-1a"
+  availability_zone = "${var.aws_region}a"
   tags = {
     Name = "DVS-Pub-Sub1"
   }
@@ -33,9 +33,9 @@ resource "aws_subnet" "dvs_pub_sub1" {
 
 resource "aws_subnet" "dvs_pub_sub2" {
   vpc_id            = aws_vpc.dvs_vpc.id
-  cidr_block        = "10.49.151.0/24"
+  cidr_block        = var.pub_subnet2_cidr
   map_public_ip_on_launch = true
-  availability_zone = "eu-central-1b"
+  availability_zone = "${var.aws_region}b"
   tags = {
     Name = "DVS-Pub-Sub2"
   }
@@ -43,8 +43,8 @@ resource "aws_subnet" "dvs_pub_sub2" {
 
 resource "aws_subnet" "dvs_priv_sub1" {
   vpc_id            = aws_vpc.dvs_vpc.id
-  cidr_block        = "10.49.152.0/24"
-  availability_zone = "eu-central-1a"
+  cidr_block        = var.priv_subnet1_cidr
+  availability_zone = "${var.aws_region}a"
   tags = {
     Name = "DVS-Priv-Sub1"
   }
@@ -52,8 +52,8 @@ resource "aws_subnet" "dvs_priv_sub1" {
 
 resource "aws_subnet" "dvs_priv_sub2" {
   vpc_id            = aws_vpc.dvs_vpc.id
-  cidr_block        = "10.49.153.0/24"
-  availability_zone = "eu-central-1b"
+  cidr_block        = var.priv_subnet2_cidr
+  availability_zone = "${var.aws_region}b"
   tags = {
     Name = "DVS-Priv-Sub2"
   }
@@ -157,10 +157,10 @@ resource "aws_security_group" "dvs_web" {
 
 # EC2 Ubuntu Web-Server
 resource "aws_instance" "dvs_web_svr1" {
-  ami                    = "ami-0084a47cc718c111a"
-  instance_type          = "t2.micro"
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
   subnet_id              = aws_subnet.dvs_pub_sub1.id
-  key_name               = "eng-de" 
+  key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.dvs_web.id]
 
   tags = {
@@ -173,15 +173,15 @@ resource "aws_instance" "dvs_web_svr1" {
                 apt-get install -y nginx
                 systemctl start nginx
                 systemctl enable nginx
-                echo "Welcome to the Ubuntu Web Tier!" > /var/www/html/index.html
+                echo "DevOps is the combination of cultural philosophies" > /var/www/html/index.html
                 EOF
 }
 
 resource "aws_instance" "dvs_web_svr2" {
-  ami                    = "ami-0084a47cc718c111a" 
-  instance_type          = "t2.micro"
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
   subnet_id              = aws_subnet.dvs_pub_sub2.id
-  key_name               = "eng-de" 
+  key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.dvs_web.id]
 
   tags = {
@@ -194,17 +194,16 @@ resource "aws_instance" "dvs_web_svr2" {
                 apt-get install -y nginx
                 systemctl start nginx
                 systemctl enable nginx
-                echo "Welcome to the Ubuntu Web Tier!" > /var/www/html/index.html
+                echo "DevOps methodology aims to shorten the systems development lifecycle" > /var/www/html/index.html
                 EOF
 }
 
-
 # EC2 Ubuntu App-Server
 resource "aws_instance" "dvs_app_svr1" {
-  ami                    = "ami-0084a47cc718c111a"
-  instance_type          = "t2.micro"
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
   subnet_id              = aws_subnet.dvs_priv_sub1.id
-  key_name               = "eng-de"
+  key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.dvs_app.id]
 
   tags = {
@@ -215,16 +214,15 @@ resource "aws_instance" "dvs_app_svr1" {
                 #!/bin/bash
                 apt-get update -y
                 apt-get install -y python3 python3-pip
-                echo "This is the Ubuntu Application Tier" > /home/ubuntu/app.log
+                echo "Bring Your Own DevOps (BYOD)" > /home/ubuntu/app.log
                 EOF
 }
 
-
 resource "aws_instance" "dvs_app_svr2" {
-  ami                    = "ami-0084a47cc718c111a"
-  instance_type          = "t2.micro"
+  ami                    = var.ami_id
+  instance_type          = var.instance_type
   subnet_id              = aws_subnet.dvs_priv_sub2.id
-  key_name               = "eng-de"
+  key_name               = var.key_name
   vpc_security_group_ids = [aws_security_group.dvs_app.id]
 
   tags = {
@@ -235,19 +233,16 @@ resource "aws_instance" "dvs_app_svr2" {
                 #!/bin/bash
                 apt-get update -y
                 apt-get install -y python3 python3-pip
-                echo "This is the Ubuntu Application Tier" > /home/ubuntu/app.log
+                echo "Bring Your Own DevOps (BYOD)" > /home/ubuntu/app.log
                 EOF
 }
-
 
 # Launch Template
 resource "aws_launch_template" "dvs_web_lt" {
   name          = "DVS-Web-LT"
-  image_id      = "ami-0084a47cc718c111a" 
-  instance_type = "t2.micro"
-  key_name      = "eng-de"
-
-  vpc_security_group_ids = [aws_security_group.dvs_web.id]
+  image_id      = var.ami_id
+  instance_type = var.instance_type
+  key_name      = var.key_name
 
   user_data = base64encode(<<-EOF
                 #!/bin/bash
@@ -255,20 +250,20 @@ resource "aws_launch_template" "dvs_web_lt" {
                 apt-get install -y nginx
                 systemctl start nginx
                 systemctl enable nginx
-                echo "Welcome to the Ubuntu Web Tier!" > /var/www/html/index.html
+                echo "This is my journey to Devops!" > /var/www/html/index.html
                 EOF
   )
 
   network_interfaces {
     associate_public_ip_address = true
-    subnet_id                   = aws_subnet.dvs_pub_sub1.id 
+    subnet_id                   = aws_subnet.dvs_pub_sub1.id
+    security_groups             = [aws_security_group.dvs_web.id]  
   }
 
   tags = {
     Name = "DVS-Web-Template"
   }
 }
-
 
 # Target Group
 resource "aws_lb_target_group" "dvs_web_tg" {
@@ -286,7 +281,6 @@ resource "aws_lb_target_group" "dvs_web_tg" {
     matcher             = "200-399"
   }
 }
-
 
 # Application Load Balancer
 resource "aws_lb" "dvs_alb" {
@@ -312,7 +306,6 @@ resource "aws_lb_listener" "dvs_web_listener" {
   }
 }
 
-
 # Auto Scaling Group
 resource "aws_autoscaling_group" "dvs_web_asg" {
   launch_template {
@@ -332,13 +325,11 @@ resource "aws_autoscaling_group" "dvs_web_asg" {
   target_group_arns = [aws_lb_target_group.dvs_web_tg.arn]
 
   tag {
-      key                 = "web_tg"
-      value               = "DVS-Web-ASG"
-      propagate_at_launch = true
-   }
-  
+    key                 = "web_tg"
+    value               = "DVS-Web-ASG"
+    propagate_at_launch = true
+  }
 }
-
 
 resource "aws_autoscaling_policy" "dvs_web_asg_scale_out" {
   name                   = "scale-out"
@@ -367,7 +358,7 @@ resource "aws_security_group" "dvs_app" {
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = ["10.49.0.0/16"] 
+    cidr_blocks = [var.vpc_cidr] 
   }
 
   egress {
